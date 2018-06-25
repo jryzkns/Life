@@ -3,6 +3,8 @@
 
 -- https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
 
+-- add in music generation based on amount of cells living
+
 local unrequited = require("unrequited")
 
 zoomfactor = 10
@@ -81,13 +83,46 @@ function love.load()
                 game.world = new_world
 
         end
+
+        living_cells = 0
+
+        tone={}
+        tone.note = love.audio.newSource("a440.mp3", "static") -- treating the A as the base note in the scale tbh
+        tone.note:setLooping(true)
+
+        tone.keypoints = {0,2,4,6,7,9,11} -- g major
+        tone.scalepos = 1 --we start with the base note
+        
+        tone.memory = 0
+
+        function tone:transition()
+                if tone.memory ~= living_cells then
+                        tone.scalepos = ( living_cells )%7 + 1
+                end
+
+                tone.note:setPitch(2^(tone.keypoints[tone.scalepos]/12))
+
+                tone.memory = living_cells
+        end
+
+        tone.note:play()
 end
 
 function love.update(dt)
         if not game.paused then
+
                 unrequited:update()
+
                 if(unrequited.photographs % game.evolution_delay == 0) then
-                game:evolve()
+                        game:evolve()
+                        tone:transition()
+                end
+
+                living_cells = 0
+                for i=1,game.xdim/zoomfactor do
+                        for j=1,game.ydim/zoomfactor do
+                                if game.world[i][j] then living_cells = living_cells + 1 end
+                        end
                 end
         end
 end
